@@ -19,8 +19,13 @@ const app = express();
 // --- SEGURIDAD CORS (MODO FLEXIBLE) ---
 // Esto permite que tu Frontend (Vercel/Localhost) se conecte sin peleas.
 app.use(cors({
-    origin: '*', // En producción lo restringiremos, pero para desarrollo esto evita dolores de cabeza
-    credentials: true
+    // 🚨 AQUÍ ESTÁ EL CAMBIO: Ponemos tu dominio de Vercel explícitamente
+    origin: [
+        'https://refugio-katze-web.vercel.app', // Tu web en producción
+        'http://localhost:5173'                 // Tu web en local (para que sigas trabajando)
+    ],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true, 
 }));
 
 app.use(express.json()); // Para poder leer JSON en los formularios
