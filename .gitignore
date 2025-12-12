@@ -1,0 +1,15 @@
+# Ignorar dependencias pesadas
+node_modules/
+
+# Ignorar archivos de sistema
+.DS_Store
+Thumbs.db
+
+# --- SEGURIDAD: IGNORAR SECRETOS ---
+.env
+backend/.env
+frontend/.env
+
+# Ignorar carpetas de build
+dist/
+build/

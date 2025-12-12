@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Opcional: Poner el color de fondo por defecto */
+body {
+  @apply bg-cream text-gray-800;
+}
