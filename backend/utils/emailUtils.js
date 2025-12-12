@@ -1,49 +1,67 @@
-// backend/utils/emailUtils.js
-const nodemailer = require('nodemailer');
-const dotenv = require('dotenv');
-dotenv.config();
+const Solicitud = require('../models/Solicitud');
 
-console.log("🔒 INTENTANDO CONEXIÓN SEGURA SSL (PUERTO 465)...");
+// 1. COMENTAMOS O BORRAMOS ESTA LÍNEA para "romper" la conexión con el archivo de email
+// const { sendApprovalEmail } = require('../utils/emailUtils'); 
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',  // Host manual
-    port: 465,               // 🚨 PUERTO SSL (La puerta trasera)
-    secure: true,            // 🚨 TIENE QUE SER TRUE para el puerto 465
-    auth: {
-        user: process.env.EMAIL_HOST_USER, 
-        pass: process.env.EMAIL_HOST_PASSWORD,
-    },
-    // Esto ayuda si el certificado de seguridad es estricto
-    tls: {
-        rejectUnauthorized: false
-    }
-});
-
-const sendApprovalEmail = async (adoptanteEmail, adoptanteNombre, gatoNombre) => {
-    console.log(`📨 Enviando a: ${adoptanteEmail} vía SSL...`);
-    
+// @desc    Crear solicitud
+const crearSolicitud = async (req, res) => {
     try {
-        const mailOptions = {
-            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_HOST_USER}>`,
-            to: adoptanteEmail,
-            subject: `🎉 ¡Felicidades! Solicitud Aprobada para ${gatoNombre}`,
-            html: `
-                <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                    <h2 style="color: #4C7878;">¡Buenas noticias, ${adoptanteNombre}!</h2>
-                    <p>Tu solicitud para adoptar a <strong>${gatoNombre}</strong> ha sido APROBADA.</p>
-                    <hr>
-                    <p style="font-size: 12px; color: #777;">Refugio Katze</p>
-                </div>
-            `,
-        };
+        const { gatoId, adoptante, aptitud } = req.body;
+        console.log(`[NUEVA SOLICITUD] Recibida para gato ID: ${gatoId}`);
 
-        const info = await transporter.sendMail(mailOptions);
-        console.log(`✅ ¡ENVIADO POR SSL! ID: ${info.messageId}`);
-        return true;
+        const nuevaSolicitud = new Solicitud({
+            gato: gatoId,
+            adoptante,
+            aptitud,
+            estado: 'Pendiente'
+        });
+
+        const solicitudGuardada = await nuevaSolicitud.save();
+        await solicitudGuardada.populate('gato', 'nombre imagen');
+        res.status(201).json(solicitudGuardada);
     } catch (error) {
-        console.error('❌ FALLÓ SSL:', error);
-        return false;
+        console.error(error);
+        res.status(500).json({ message: 'Error al crear solicitud' });
     }
 };
 
-module.exports = { sendApprovalEmail };
+const obtenerSolicitudes = async (req, res) => {
+    try {
+        const solicitudes = await Solicitud.find({})
+            .populate('gato', 'nombre imagen')
+            .sort({ createdAt: -1 });
+        res.json(solicitudes);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error al obtener solicitudes' });
+    }
+};
+
+// @desc    Actualizar estado (MODO MANUAL - SIN EMAILS)
+const actualizarEstadoSolicitud = async (req, res) => {
+    const { estado } = req.body;
+    try {
+        const solicitud = await Solicitud.findById(req.params.id);
+
+        if (!solicitud) return res.status(404).json({ message: 'No encontrado' });
+
+        // --- AQUÍ ESTABA EL CÓDIGO DEL EMAIL, LO QUITAMOS ---
+        // Al no llamar a sendApprovalEmail, el servidor nunca intentará conectarse a Gmail
+        // y nunca dará error de Timeout. ¡Será instantáneo!
+        // ----------------------------------------------------
+
+        solicitud.estado = estado;
+        await solicitud.save();
+        
+        await solicitud.populate('gato', 'nombre imagen');
+        
+        console.log(`✅ Estado actualizado a: ${estado} (Modo Manual 100%)`);
+        res.json(solicitud);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error actualizando estado' });
+    }
+};
+
+module.exports = { crearSolicitud, obtenerSolicitudes, actualizarEstadoSolicitud };
